@@ -158,6 +158,11 @@ button:hover {
     white-space: nowrap;
     text-overflow: ellipsis;
 }
+.text-box:focus {
+  outline: 2px solid #0078d4;
+  background-color: #fff;
+}
+
 
 .mini-image {
     width: 20px;
@@ -2406,4 +2411,57 @@ button i {
 .slide-element.table-element th:active,
 .slide-element.table-element td:active {
     background-color: rgba(33, 150, 243, 0.1);
+}
+.message {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  padding: 12px 20px;
+  font-size: 14px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  background-color: #f0f0f0;
+  color: #333;
+  border-left: 5px solid #007bff;
+}
+
+.message.warning {
+  background-color: #f8d7da;
+  border-left-color: #dc3545;
+  color: #721c24;
+}
+.slide-element.selected .rotation-handle {
+  position: absolute;
+  top: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+  background: url('data:image/svg+xml;utf8,<svg fill="%23000" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M15.55 5.55L11 1v6h6l-2.24-2.24A7.958 7.958 0 0120 12c0 4.41-3.59 8-8 8s-8-3.59-8-8H2c0 5.52 4.48 10 10 10s10-4.48 10-10a9.985 9.985 0 00-6.45-9.45z"/></svg>') no-repeat center center;
+  cursor: grab;
+  z-index: 10;
+}
+.placeholder {
+    color: grey;
+    font-style: italic;
+}
+
+.text-input {
+    min-width: 50px;
+    min-height: 20px;
+}
+.placeholder {
+    color: grey;
+    font-style: italic;
+}
+
+.selection-box {
+  border: 1px dashed #0078D7;
+  background: rgba(0, 120, 215, 0.1);
+  z-index: 999;
+}
+
+.rotation-handle:hover {
+  background: #005bb5;
 }

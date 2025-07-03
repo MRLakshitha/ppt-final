@@ -1,147 +1,3 @@
-
-// ✅ Track unsaved changes
-let isModified = false;
-let allowClose = false;
-
-const currentSlide = document.getElementById('currentSlide');
-new MutationObserver(() => {
-  isModified = true;
-}).observe(currentSlide, { childList: true, subtree: true });
-
-// ✅ Modal references
-const saveModal = document.getElementById('savePromptModal');
-const saveBtn = document.getElementById('saveBtn');
-const dontSaveBtn = document.getElementById('dontSaveBtn');
-const cancelBtn = document.getElementById('cancelBtn');
-
-const formatModal = document.getElementById('formatPromptModal');
-const savePdfBtn = document.getElementById('savePdfBtn');
-const saveHtmlBtn = document.getElementById('saveHtmlBtn');
-const formatCancelBtn = document.getElementById('formatCancelBtn');
-
-// ✅ Save as PDF with file picker
-function downloadPDF(callback) {
-  const slide = document.getElementById('currentSlide');
-  const clone = slide.cloneNode(true);
-  clone.style.position = 'static';
-  clone.style.transform = 'none';
-
-  const wrapper = document.createElement('div');
-  wrapper.style.position = 'fixed';
-  wrapper.style.top = '-9999px';
-  wrapper.appendChild(clone);
-  document.body.appendChild(wrapper);
-
-  html2canvas(clone, { backgroundColor: null, scale: 2 }).then(canvas => {
-    canvas.toBlob(async blob => {
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: 'presentation.pdf',
-          types: [{ description: 'PDF Document', accept: { 'application/pdf': ['.pdf'] } }]
-        });
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        callback();
-      } catch (err) {
-        console.error('Save cancelled or failed', err);
-      } finally {
-        wrapper.remove();
-      }
-    }, 'application/pdf');
-  });
-}
-
-
-
-// ✅ Save as HTML with file picker
-function downloadHTML(callback) {
-  const htmlContent = document.documentElement.outerHTML;
-  const blob = new Blob([htmlContent], { type: 'text/html' });
-
-  (async () => {
-    try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: 'presentation.html',
-        types: [{ description: 'HTML Document', accept: { 'text/html': ['.html'] } }]
-      });
-      const writable = await handle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      callback();
-    } catch (err) {
-      console.error('Save cancelled or failed', err);
-    }
-  })();
-}
-
-// ✅ Ctrl+R reload interception
-document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.key === 'r') {
-    if (!isModified) return;
-    e.preventDefault();
-    showSaveModals(() => location.reload());
-  }
-});
-
-// ✅ Tab close / back navigation handler
-window.addEventListener('beforeunload', (e) => {
-  if (allowClose || !isModified) return;
-  e.preventDefault();
-  e.returnValue = '';
-  showSaveModals(() => {
-    allowClose = true;
-    window.location.href = 'about:blank';
-  });
-});
-
-// ✅ Show Save + Format modals
-function showSaveModals(continueCallback) {
-  saveModal.style.display = 'flex';
-
-  saveBtn.onclick = () => {
-    saveModal.style.display = 'none';
-    formatModal.style.display = 'flex';
-
-    savePdfBtn.onclick = () => {
-      formatModal.style.display = 'none';
-      downloadPDF(() => {
-        isModified = false;
-        continueCallback();
-      });
-    };
-
-    saveHtmlBtn.onclick = () => {
-      formatModal.style.display = 'none';
-      downloadHTML(() => {
-        isModified = false;
-        continueCallback();
-      });
-    };
-
-    formatCancelBtn.onclick = () => {
-      formatModal.style.display = 'none';
-    };
-  };
-
-  dontSaveBtn.onclick = () => {
-    isModified = false;
-    saveModal.style.display = 'none';
-    continueCallback();
-  };
-
-  cancelBtn.onclick = () => {
-    saveModal.style.display = 'none';
-  };
-}
-
-
-
-
-
-
-
-
 class Presentation {
     constructor() {
         this.slides = [];
@@ -183,16 +39,7 @@ class Presentation {
     this.currentSlideElement.addEventListener('dragleave', () => {
         this.currentSlideElement.classList.remove('drag-over');
     });
-setInterval(() => {
-    this.saveState();
-    // Optionally, show a toast or log
-    if (typeof showToast === 'function') {
-        showToast('Autosaved!');
-    } else {
-        console.log('Autosaved!');
-    }
-}, 30000); // Autosave every 30 seconds
-// ... existing code ...
+
     this.currentSlideElement.addEventListener('drop', (e) => {
         e.preventDefault();
         this.currentSlideElement.classList.remove('drag-over');
@@ -227,17 +74,20 @@ setInterval(() => {
         const currentSlide = this.currentSlideElement; 
          const shapesSubmenu = document.getElementById('shapesSubmenu');
          
+
 let selectionBox = null;
 let startX, startY;
 
+
+
 currentSlide.addEventListener('mousedown', (e) => {
     if (!e.shiftKey && !e.target.closest('.slide-element')) {
-        currentSlide.querySelectorAll('.slide-element.selected').forEach(el => {
-            el.classList.remove('selected');
-            removeRotationHandle(el);
-        });
+        // Deselect all on blank click if not holding Shift
+        currentSlide.querySelectorAll('.slide-element.selected').forEach(el => el.classList.remove('selected'));
     }
 
+
+    // Only activate drag selection if clicked directly on the background
     if (!e.target.closest('.slide-element') && e.button === 0) {
         e.preventDefault();
 
@@ -249,6 +99,7 @@ currentSlide.addEventListener('mousedown', (e) => {
         selectionBox.style.position = 'absolute';
         selectionBox.style.left = `${startX}px`;
         selectionBox.style.top = `${startY}px`;
+
         currentSlide.appendChild(selectionBox);
 
         const onMouseMove = (moveEvent) => {
@@ -268,33 +119,36 @@ currentSlide.addEventListener('mousedown', (e) => {
             });
         };
 
-        const onMouseUp = () => {
-            const id = parseInt(el.dataset.id || el.dataset.elementId);
-const slideElement = this.slides[this.currentSlideIndex].elements.find(obj => obj.id === id);
-if (slideElement) {
-  slideElement.rotation = angle;
-}
-saveState();
-
-            const boxRect = selectionBox.getBoundingClientRect();
-            const slideRect = currentSlide.getBoundingClientRect();
-
-            currentSlide.querySelectorAll('.slide-element').forEach(el => {
-                const elRect = el.getBoundingClientRect();
-                const overlaps = !(
-                    elRect.right < boxRect.left ||
-                    elRect.left > boxRect.right ||
-                    elRect.bottom < boxRect.top ||
-                    elRect.top > boxRect.bottom
-                );
-                if (overlaps) {
-                    el.classList.add('selected');
-                    addRotationHandle(el);
-                }
-            });
-
-            selectionBox.remove();
-            selectionBox = null;
+       
+            const onMouseUp = () => {
+                const boxRect = selectionBox.getBoundingClientRect();
+                const slideRect = currentSlide.getBoundingClientRect();
+            
+                const selectedElements = [];
+            
+                currentSlide.querySelectorAll('.slide-element').forEach(el => {
+                    const elRect = el.getBoundingClientRect();
+                    const overlaps = !(
+                        elRect.right < boxRect.left ||
+                        elRect.left > boxRect.right ||
+                        elRect.bottom < SboxRect.top ||
+                        elRect.top > boxRect.bottom
+                    );
+                    if (overlaps) {
+                        el.classList.add('selected');
+                        selectedElements.push(el);
+                    }
+                });
+            
+                // ✅ Attach rotation handle to each selected element
+                selectedElements.forEach(el => {
+                    this.makeElementRotatable(el);
+                });
+            
+                selectionBox.remove();
+                selectionBox = null;
+            
+             
 
             currentSlide.removeEventListener('mousemove', onMouseMove);
             currentSlide.removeEventListener('mouseup', onMouseUp);
@@ -302,120 +156,12 @@ saveState();
 
         currentSlide.addEventListener('mousemove', onMouseMove);
         currentSlide.addEventListener('mouseup', onMouseUp);
+        
     }
 });
 
-// 🔁 Add rotation handle
-function addRotationHandle(element) {
-    removeRotationHandle(element); // avoid duplicates
-
-    const handle = document.createElement('div');
-    handle.className = 'rotation-handle';
-    Object.assign(handle.style, {
-        position: 'absolute',
-        top: '-30px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '20px',
-        height: '20px',
-        background: '#0078D7',
-        borderRadius: '50%',
-        cursor: 'grab',
-        zIndex: 10
-    });
-
-    handle.addEventListener('mousedown', function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-
-        const rect = element.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-
-        const onMouseMove = (moveEvent) => {
-            const dx = moveEvent.clientX - centerX;
-            const dy = moveEvent.clientY - centerY;
-            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-            element.dataset.rotation = angle;
-            element.style.transform = `rotate(${angle}deg)`;
-        };
-
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    });
-
-    element.appendChild(handle);
-    element.style.position = 'absolute'; // Ensure it's positioned
-}
-
-function addRotationHandle(element) {
-    removeRotationHandle(element); // avoid duplicates
-
-    const handle = document.createElement('div');
-    handle.className = 'rotation-handle';
-    handle.innerHTML = '⟳'; // rotation symbol
-
-    Object.assign(handle.style, {
-        position: 'absolute',
-        top: '-30px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        fontSize: '18px',
-        cursor: 'grab',
-        userSelect: 'none',
-        background: 'white',
-        borderRadius: '50%',
-        padding: '4px',
-        boxShadow: '0 0 2px rgba(0,0,0,0.3)',
-        zIndex: 1000
-    });
-
-    // Ensure element is positioned
-    element.style.position = 'absolute';
-    element.appendChild(handle);
-
-    // Rotation logic
-    handle.addEventListener('mousedown', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const rect = element.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-
-        const initialAngle = parseFloat(element.dataset.rotation) || 0;
-
-        const onMouseMove = (moveEvent) => {
-            const dx = moveEvent.clientX - centerX;
-            const dy = moveEvent.clientY - centerY;
-            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-            const rotation = angle;
-
-            element.dataset.rotation = rotation;
-            element.style.transform = `rotate(${rotation}deg)`;
-        };
-
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    });
-}
-
-function removeRotationHandle(element) {
-    const existing = element.querySelector('.rotation-handle');
-    if (existing) existing.remove();
-}
-
+        
+        
 
         document.getElementById('addAudio').addEventListener('click', () => presentation.addAudioElement());
         document.getElementById('newSlide').addEventListener('click', () => this.createNewSlide());
@@ -524,43 +270,8 @@ function removeRotationHandle(element) {
         });
         
 
-// ✅ Hide right-click menu if user clicks outside it
-document.addEventListener('click', (e) => {
-    const menu = document.getElementById('customContextMenu');
-    if (menu && !menu.contains(e.target)) {
-      menu.style.display = 'none';
-    }
-  });
-  
-  // ✅ Hide when typing
-  document.addEventListener('keydown', () => {
-    const menu = document.getElementById('customContextMenu');
-    if (menu) menu.style.display = 'none';
-  });
-  
-  // ✅ Hide when editing text (input/typing)
-  document.addEventListener('input', () => {
-    const menu = document.getElementById('customContextMenu');
-    if (menu) menu.style.display = 'none';
-  });
-  
-
-   // ✅ Keyboard shortcuts for Ctrl+Z (undo) and Ctrl+Y (redo)
-document.addEventListener('keydown', (e) => {
-    // Don't handle shortcuts if user is editing text
-    if (e.target.contentEditable === 'true') return;
-
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        this.undo();
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        this.redo();
-    }
-});
-
-      
+        
+          
         
         // Hide dropdown if clicking outside
        document.addEventListener('click', () => {
@@ -591,7 +302,56 @@ document.addEventListener('keydown', (e) => {
         });
 
 
+// ✅ Hide right-click menu if user clicks outside it
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('customContextMenu');
+    if (menu && !menu.contains(e.target)) {
+      menu.style.display = 'none';
+    }
+  });
+  
+  // ✅ Hide when typing
+  document.addEventListener('keydown', () => {
+    const menu = document.getElementById('customContextMenu');
+    if (menu) menu.style.display = 'none';
+  });
+  
+  // ✅ Hide when editing text (input/typing)
+  document.addEventListener('input', () => {
+    const menu = document.getElementById('customContextMenu');
+    if (menu) menu.style.display = 'none';
+  });
+  
 
+// Click anywhere to deselect
+// document.body.addEventListener('click', () => {
+//     document.querySelectorAll('.slide-element').forEach(el => el.classList.remove('selected'));
+// });
+
+// DUPLICATE BUTTON
+// document.getElementById('duplicate').addEventListener('click', () => {
+//     const selected = document.querySelector('.slide-element.selected');
+//     if (!selected) return;
+
+//     const elementId = parseInt(selected.dataset.elementId);
+//     const original = presentation.slides[presentation.currentSlideIndex].elements.find(el => el.id === elementId);
+//     if (!original) return;
+
+//     // Clone and update properties
+//     const clone = structuredClone(original);
+//     clone.id = Date.now() + Math.floor(Math.random() * 1000); // Unique ID
+//     clone.x += 20;
+//     clone.y += 20;
+
+//     // Ensure flip property exists
+//     if (!clone.flip) {
+//         clone.flip = { horizontal: false, vertical: false };
+//     }
+
+//     presentation.slides[presentation.currentSlideIndex].elements.push(clone);
+//     presentation.updateUI();
+// });
+// DUPLICATE BUTTON
 document.getElementById('duplicate').addEventListener('click', () => {
   const selected = document.querySelector('.slide-element.selected');
   if (!selected) return;
@@ -608,6 +368,7 @@ document.getElementById('duplicate').addEventListener('click', () => {
     alert('Duplicated elements cannot be duplicated again.');
     return;
   }
+
   // Count all clones of this original element (including itself)
   const originalId = original.id;
   const clones = slideElements.filter(el => el.originalId === originalId || el.id === originalId);
@@ -1167,6 +928,20 @@ document.addEventListener('keydown', (e) => {
     //     this.updateUI();
     // }
 
+    // createNewSlide() {
+    //     const slide = {
+    //         elements: [],
+    //         id: Date.now(),
+    //         theme: this.currentTheme ? {
+    //             backgroundImage: themes[this.currentTheme].backgroundImage,
+    //             textColor: themes[this.currentTheme].textColor
+    //         } : null
+    //     };
+        
+    //     this.slides.push(slide);
+    //     this.currentSlideIndex = this.slides.length - 1;
+    //     this.updateUI();
+    // }
     createNewSlide() {
         const slide = {
             elements: [],
@@ -1230,7 +1005,7 @@ document.addEventListener('keydown', (e) => {
         this.updateUI();
     }
     
-
+    
  
     deleteCurrentSlide() {
         if (this.slides.length <= 1) return;
@@ -1249,7 +1024,34 @@ document.addEventListener('keydown', (e) => {
         this.updateUI();
     }
 
-//    creating new slide along with the texts
+    // deleteElement(element) {
+    //     const selectedElementDiv = document.querySelector('.slide-element.selected'); 
+    
+    //     if (!selectedElementDiv) {
+    //         alert('Please select an element to delete.');
+    //         return;
+    //     }
+    
+    //     this.saveState();
+    
+    //     // Find the element ID from the dataset
+    //     const elementId = parseInt(selectedElementDiv.dataset.elementId);
+    
+    //     // Remove the element from the slides array
+    //     this.slides[this.currentSlideIndex].elements = this.slides[this.currentSlideIndex].elements.filter(
+    //         (el) => el.id !== elementId
+    //     );
+    
+    //     // Remove from the DOM
+    //     selectedElementDiv.remove();
+    
+    //     // Clear selection
+    //     this.selectedElement = null;
+    
+    //     this.updateUI();
+    // }
+    
+
     createNewPresentation() {
         if (confirm("Are you sure you want to create a new presentation? All unsaved changes will be lost.")) {
             // Reset the presentation to its initial state
@@ -1257,7 +1059,7 @@ document.addEventListener('keydown', (e) => {
             this.currentSlideIndex = 0;
             this.undoStack = [];
             this.redoStack = [];
-     this.currentTheme = null;
+    
             // Create an initial slide
             this.createNewSlide();
             alert("New presentation created!");
@@ -1501,7 +1303,29 @@ applyFillToShape() {
         this.updateUI();
     }
 
-// adding text or text elements
+
+
+
+    //  addTextElement(content = 'Click to add text', x = 100, y = 100) {
+    //     this.saveState(); // Save state before adding
+    //     const element = {
+    //         type: 'text',
+    //         content: content,
+    //         x: x,
+    //         y: y,
+    //         style: {
+    //             fontSize: '16px',
+    //             fontFamily: 'Arial',
+    //             color: '#000000',
+    //             fontWeight: 'normal',
+    //             fontStyle: 'normal'
+    //         },
+    //         id: Date.now()
+    //     };
+
+    //     this.slides[this.currentSlideIndex].elements.push(element);
+    //     this.updateUI();
+    // }
 addTextElement(content = 'Click to add text', x = 100, y = 100) {
     console.log('Adding text element:', content, x, y);
     this.saveState();
@@ -1520,14 +1344,35 @@ addTextElement(content = 'Click to add text', x = 100, y = 100) {
         },
         id: Date.now()
     };
- // ✅ Check for overflow
- this.checkAndMoveOverflowingElements();
+
     this.slides[this.currentSlideIndex].elements.push(element);
     this.updateUI();
 }
 
-   
+    
+    // addTextElement(content = 'Click to add text', x = 100, y = 100) {
+    //     console.log('Adding text element:', content, x, y);
+    //     this.saveState(); // Save state before adding
+    //     const element = {
+    //         type: 'text',
+    //         content: content,
+    //         x: x,
+    //         y: y,
+    //         style: {
+    //             fontSize: '16px',
+    //             fontFamily: 'Arial',
+    //             color: '#000000',
+    //             fontWeight: 'normal',
+    //             fontStyle: 'normal'
+    //         },
+    //         id: Date.now()
+    //     };
 
+    //     console.log('Created element:', element);
+    //     this.slides[this.currentSlideIndex].elements.push(element);
+    //     console.log('Current slide elements:', this.slides[this.currentSlideIndex].elements);
+    //     this.updateUI();
+    // }
 
     addImageElement() {
         const input = document.createElement('input');
@@ -1619,6 +1464,8 @@ addTextElement(content = 'Click to add text', x = 100, y = 100) {
           this.updateCurrentSlide();
     }
  
+    
+    
 
 
 flipElement(direction) {
@@ -1670,85 +1517,66 @@ flipElement(direction) {
 //     console.log(presentation.slides[presentation.currentSlideIndex].elements);
 
 // }
+makeElementRotatable(elementDiv) {
+    // Check and skip if already added
+    if (elementDiv.querySelector('.rotation-handle')) return;
 
-rotateSelectedElement() {
-    const selected = document.querySelector('.slide-element.selected');
-    if (!selected) return;
+    const handle = document.createElement('div');
+    handle.className = 'rotation-handle';
+    elementDiv.appendChild(handle);
 
-    const elementId = parseInt(selected.dataset.id || selected.dataset.elementId);
-    const element = this.slides[this.currentSlideIndex].elements.find(el => el.id === elementId);
-    if (!element) return;
+    // style is in CSS already — see styles.css
 
-    // Rotate 3 degrees per click
-    element.rotation = (element.rotation || 0) + 3;
-    if (element.rotation >= 360) element.rotation -= 360;
+    let isRotating = false;
+    let centerX = 0, centerY = 0, startAngle = 0;
 
-    const flip = element.flip || { horizontal: false, vertical: false };
-    const scaleX = flip.horizontal ? -1 : 1;
-    const scaleY = flip.vertical ? -1 : 1;
+    handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isRotating = true;
 
-    selected.style.transform = `scale(${scaleX}, ${scaleY}) rotate(${element.rotation}deg)`;
+        const rect = elementDiv.getBoundingClientRect();
+        centerX = rect.left + rect.width / 2;
+        centerY = rect.top + rect.height / 2;
 
-    // ✅ Add or update the rotation handle
-    this.makeElementRotatable(selected);
+        const dx = e.clientX - centerX;
+        const dy = e.clientY - centerY;
+        startAngle = Math.atan2(dy, dx) * (180 / Math.PI) - (parseFloat(elementDiv.getAttribute('data-rotation')) || 0);
 
-    saveState();
+        document.body.style.cursor = 'grabbing';
+    });
+
+    const onMouseMove = (e) => {
+        if (!isRotating) return;
+
+        const dx = e.clientX - centerX;
+        const dy = e.clientY - centerY;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI) - startAngle;
+
+        const elementModel = this.findElementModelFromDOM(elementDiv);
+        if (!elementModel) return;
+
+        elementModel.rotation = angle;
+        elementDiv.setAttribute('data-rotation', angle);
+
+        const flip = elementModel.flip || { horizontal: false, vertical: false };
+        const scaleX = flip.horizontal ? -1 : 1;
+        const scaleY = flip.vertical ? -1 : 1;
+
+        elementDiv.style.transform = `scale(${scaleX}, ${scaleY}) rotate(${angle}deg)`;
+    };
+
+    const onMouseUp = () => {
+        if (isRotating) {
+            isRotating = false;
+            document.body.style.cursor = 'default';
+            this.saveState?.();
+        }
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
 }
-
-
-
-//     rotateSelectedElement(elementDiv, elementModel) {
-//     // Remove existing rotation handle
-//     const existing = elementDiv.querySelector('.rotation-handle');
-//     if (existing) existing.remove();
-
-//     // Create new rotation handle
-//     const handle = document.createElement('div');
-//     handle.className = 'rotation-handle';
-//     elementDiv.appendChild(handle);
-
-//     let isRotating = false;
-
-//     handle.addEventListener('mousedown', (e) => {
-//         e.stopPropagation();
-//         isRotating = true;
-
-//         const rect = elementDiv.getBoundingClientRect();
-//         elementDiv.dataset.centerX = rect.left + rect.width / 2;
-//         elementDiv.dataset.centerY = rect.top + rect.height / 2;
-//         document.body.style.cursor = 'grabbing';
-//     });
-
-//     const onMouseMove = (e) => {
-//         if (!isRotating) return;
-
-//         const cx = parseFloat(elementDiv.dataset.centerX);
-//         const cy = parseFloat(elementDiv.dataset.centerY);
-//         const dx = e.clientX - cx;
-//         const dy = e.clientY - cy;
-
-//         const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-//         elementModel.rotation = angle;
-
-//         const scaleX = elementModel.flip?.horizontal ? -1 : 1;
-//         const scaleY = elementModel.flip?.vertical ? -1 : 1;
-
-//         elementDiv.style.transform = `scale(${scaleX}, ${scaleY}) rotate(${angle}deg)`;
-//     };
-
-//     const onMouseUp = () => {
-//         if (isRotating) {
-//             isRotating = false;
-//             document.body.style.cursor = 'default';
-//             if (typeof presentation.saveState === 'function') {
-//                 presentation.saveState();
-//             }
-//         }
-//     };
-
-//     document.addEventListener('mousemove', onMouseMove);
-//     document.addEventListener('mouseup', onMouseUp);
-// }
 
     
     
@@ -2645,7 +2473,7 @@ if (slide.showGuides) {
                             this.makeElementResizable(elementDiv);
                             this.makeElementRotatable(elementDiv);
                     break;
-                   case 'text':
+                    case 'text':
                         elementDiv = document.createElement('div');
                         elementDiv.className = 'slide-element text-element';
                         elementDiv.dataset.elementId = element.id;
@@ -2825,7 +2653,6 @@ setTimeout(() => {
                         this.currentSlideElement.appendChild(elementDiv);
                         break;
                     
-
                     case 'chart':
     const wrapper = document.createElement('div');
     wrapper.className = 'slide-element chart-element';
@@ -3308,25 +3135,25 @@ setTimeout(() => {
 
 
 // bold, italics, font fam, px, color ------------------------------------------------------------------------------------------------------------------------------
-// elementDiv.addEventListener('click', (e) => {
-//     e.stopPropagation();
-//     document.querySelectorAll('.slide-element').forEach(el => el.classList.remove('selected'));
-//     elementDiv.classList.add('selected');
-//     this.selectedElementId = element.id;
-// });
-// elementDiv.addEventListener('click', () => {
-//     // Clear other selections
-//     document.querySelectorAll('.slide-element.selected').forEach(el => {
-//         el.classList.remove('selected');
-//         const rh = el.querySelector('.rotation-handle');
-//         if (rh) rh.remove();
-//     });
+elementDiv.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.slide-element').forEach(el => el.classList.remove('selected'));
+    elementDiv.classList.add('selected');
+    this.selectedElementId = element.id;
+});
+elementDiv.addEventListener('click', () => {
+    // Clear other selections
+    document.querySelectorAll('.slide-element.selected').forEach(el => {
+        el.classList.remove('selected');
+        const rh = el.querySelector('.rotation-handle');
+        if (rh) rh.remove();
+    });
 
-//     elementDiv.classList.add('selected');
+    elementDiv.classList.add('selected');
 
-//     const model = this.findElementModelFromDOM(elementDiv);
-//     rotateSelectedElement(elementDiv, model);
-// });
+    const model = this.findElementModelFromDOM(elementDiv);
+    rotateSelectedElement(elementDiv, model);
+});
 
 
 
@@ -4117,9 +3944,6 @@ makeElementDraggable(element) {
                     textContent.style.fontStyle = element.style.fontStyle;
                 }
                 break;
-
-
-
             case 'underline':
                 if (selectedText) {
                     document.execCommand('underline', false, null);
@@ -5455,6 +5279,8 @@ currentSlide.appendChild(wrapper);
 this.makeElementDraggable(wrapper);
 this.makeElementResizable(wrapper);
   this.makeElementRotatable(wrapper);
+  this.makeElementRotatable(elementDiv);
+
 
         
         const onMouseMove = (e) => {
@@ -6978,7 +6804,6 @@ document.addEventListener('input', () => {
 
 }
 
-
 // Remove the second initContextMenu function
 // ... existing code ...
 
@@ -7804,13 +7629,9 @@ initKeyboardShortcuts() {
                     e.preventDefault();
                     this.duplicateElement();
                     break;
-                      case 'z': // undo
+                    case 'z': // undo
                       e.preventDefault();
                       this.undo();
-                      break;
-                      case 's': //save
-                      e.preventDefault();
-                      this.savePresentation();
                       break;
                       case 'y': //redo
                         e.preventDefault();
@@ -7832,7 +7653,6 @@ initKeyboardShortcuts() {
     // this.deleteCurrentSlide();
             }
         }
-        
     });
     
     // Enable Ctrl+Click multiple selection on elements

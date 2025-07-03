@@ -1,147 +1,3 @@
-
-// ✅ Track unsaved changes
-let isModified = false;
-let allowClose = false;
-
-const currentSlide = document.getElementById('currentSlide');
-new MutationObserver(() => {
-  isModified = true;
-}).observe(currentSlide, { childList: true, subtree: true });
-
-// ✅ Modal references
-const saveModal = document.getElementById('savePromptModal');
-const saveBtn = document.getElementById('saveBtn');
-const dontSaveBtn = document.getElementById('dontSaveBtn');
-const cancelBtn = document.getElementById('cancelBtn');
-
-const formatModal = document.getElementById('formatPromptModal');
-const savePdfBtn = document.getElementById('savePdfBtn');
-const saveHtmlBtn = document.getElementById('saveHtmlBtn');
-const formatCancelBtn = document.getElementById('formatCancelBtn');
-
-// ✅ Save as PDF with file picker
-function downloadPDF(callback) {
-  const slide = document.getElementById('currentSlide');
-  const clone = slide.cloneNode(true);
-  clone.style.position = 'static';
-  clone.style.transform = 'none';
-
-  const wrapper = document.createElement('div');
-  wrapper.style.position = 'fixed';
-  wrapper.style.top = '-9999px';
-  wrapper.appendChild(clone);
-  document.body.appendChild(wrapper);
-
-  html2canvas(clone, { backgroundColor: null, scale: 2 }).then(canvas => {
-    canvas.toBlob(async blob => {
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: 'presentation.pdf',
-          types: [{ description: 'PDF Document', accept: { 'application/pdf': ['.pdf'] } }]
-        });
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        callback();
-      } catch (err) {
-        console.error('Save cancelled or failed', err);
-      } finally {
-        wrapper.remove();
-      }
-    }, 'application/pdf');
-  });
-}
-
-
-
-// ✅ Save as HTML with file picker
-function downloadHTML(callback) {
-  const htmlContent = document.documentElement.outerHTML;
-  const blob = new Blob([htmlContent], { type: 'text/html' });
-
-  (async () => {
-    try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: 'presentation.html',
-        types: [{ description: 'HTML Document', accept: { 'text/html': ['.html'] } }]
-      });
-      const writable = await handle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      callback();
-    } catch (err) {
-      console.error('Save cancelled or failed', err);
-    }
-  })();
-}
-
-// ✅ Ctrl+R reload interception
-document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.key === 'r') {
-    if (!isModified) return;
-    e.preventDefault();
-    showSaveModals(() => location.reload());
-  }
-});
-
-// ✅ Tab close / back navigation handler
-window.addEventListener('beforeunload', (e) => {
-  if (allowClose || !isModified) return;
-  e.preventDefault();
-  e.returnValue = '';
-  showSaveModals(() => {
-    allowClose = true;
-    window.location.href = 'about:blank';
-  });
-});
-
-// ✅ Show Save + Format modals
-function showSaveModals(continueCallback) {
-  saveModal.style.display = 'flex';
-
-  saveBtn.onclick = () => {
-    saveModal.style.display = 'none';
-    formatModal.style.display = 'flex';
-
-    savePdfBtn.onclick = () => {
-      formatModal.style.display = 'none';
-      downloadPDF(() => {
-        isModified = false;
-        continueCallback();
-      });
-    };
-
-    saveHtmlBtn.onclick = () => {
-      formatModal.style.display = 'none';
-      downloadHTML(() => {
-        isModified = false;
-        continueCallback();
-      });
-    };
-
-    formatCancelBtn.onclick = () => {
-      formatModal.style.display = 'none';
-    };
-  };
-
-  dontSaveBtn.onclick = () => {
-    isModified = false;
-    saveModal.style.display = 'none';
-    continueCallback();
-  };
-
-  cancelBtn.onclick = () => {
-    saveModal.style.display = 'none';
-  };
-}
-
-
-
-
-
-
-
-
 class Presentation {
     constructor() {
         this.slides = [];
@@ -183,16 +39,7 @@ class Presentation {
     this.currentSlideElement.addEventListener('dragleave', () => {
         this.currentSlideElement.classList.remove('drag-over');
     });
-setInterval(() => {
-    this.saveState();
-    // Optionally, show a toast or log
-    if (typeof showToast === 'function') {
-        showToast('Autosaved!');
-    } else {
-        console.log('Autosaved!');
-    }
-}, 30000); // Autosave every 30 seconds
-// ... existing code ...
+
     this.currentSlideElement.addEventListener('drop', (e) => {
         e.preventDefault();
         this.currentSlideElement.classList.remove('drag-over');
@@ -227,17 +74,20 @@ setInterval(() => {
         const currentSlide = this.currentSlideElement; 
          const shapesSubmenu = document.getElementById('shapesSubmenu');
          
+
 let selectionBox = null;
 let startX, startY;
 
+
+
 currentSlide.addEventListener('mousedown', (e) => {
     if (!e.shiftKey && !e.target.closest('.slide-element')) {
-        currentSlide.querySelectorAll('.slide-element.selected').forEach(el => {
-            el.classList.remove('selected');
-            removeRotationHandle(el);
-        });
+        // Deselect all on blank click if not holding Shift
+        currentSlide.querySelectorAll('.slide-element.selected').forEach(el => el.classList.remove('selected'));
     }
 
+
+    // Only activate drag selection if clicked directly on the background
     if (!e.target.closest('.slide-element') && e.button === 0) {
         e.preventDefault();
 
@@ -249,6 +99,7 @@ currentSlide.addEventListener('mousedown', (e) => {
         selectionBox.style.position = 'absolute';
         selectionBox.style.left = `${startX}px`;
         selectionBox.style.top = `${startY}px`;
+
         currentSlide.appendChild(selectionBox);
 
         const onMouseMove = (moveEvent) => {
@@ -269,13 +120,6 @@ currentSlide.addEventListener('mousedown', (e) => {
         };
 
         const onMouseUp = () => {
-            const id = parseInt(el.dataset.id || el.dataset.elementId);
-const slideElement = this.slides[this.currentSlideIndex].elements.find(obj => obj.id === id);
-if (slideElement) {
-  slideElement.rotation = angle;
-}
-saveState();
-
             const boxRect = selectionBox.getBoundingClientRect();
             const slideRect = currentSlide.getBoundingClientRect();
 
@@ -287,10 +131,7 @@ saveState();
                     elRect.bottom < boxRect.top ||
                     elRect.top > boxRect.bottom
                 );
-                if (overlaps) {
-                    el.classList.add('selected');
-                    addRotationHandle(el);
-                }
+                if (overlaps) el.classList.add('selected');
             });
 
             selectionBox.remove();
@@ -305,117 +146,8 @@ saveState();
     }
 });
 
-// 🔁 Add rotation handle
-function addRotationHandle(element) {
-    removeRotationHandle(element); // avoid duplicates
-
-    const handle = document.createElement('div');
-    handle.className = 'rotation-handle';
-    Object.assign(handle.style, {
-        position: 'absolute',
-        top: '-30px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '20px',
-        height: '20px',
-        background: '#0078D7',
-        borderRadius: '50%',
-        cursor: 'grab',
-        zIndex: 10
-    });
-
-    handle.addEventListener('mousedown', function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-
-        const rect = element.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-
-        const onMouseMove = (moveEvent) => {
-            const dx = moveEvent.clientX - centerX;
-            const dy = moveEvent.clientY - centerY;
-            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-            element.dataset.rotation = angle;
-            element.style.transform = `rotate(${angle}deg)`;
-        };
-
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    });
-
-    element.appendChild(handle);
-    element.style.position = 'absolute'; // Ensure it's positioned
-}
-
-function addRotationHandle(element) {
-    removeRotationHandle(element); // avoid duplicates
-
-    const handle = document.createElement('div');
-    handle.className = 'rotation-handle';
-    handle.innerHTML = '⟳'; // rotation symbol
-
-    Object.assign(handle.style, {
-        position: 'absolute',
-        top: '-30px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        fontSize: '18px',
-        cursor: 'grab',
-        userSelect: 'none',
-        background: 'white',
-        borderRadius: '50%',
-        padding: '4px',
-        boxShadow: '0 0 2px rgba(0,0,0,0.3)',
-        zIndex: 1000
-    });
-
-    // Ensure element is positioned
-    element.style.position = 'absolute';
-    element.appendChild(handle);
-
-    // Rotation logic
-    handle.addEventListener('mousedown', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const rect = element.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-
-        const initialAngle = parseFloat(element.dataset.rotation) || 0;
-
-        const onMouseMove = (moveEvent) => {
-            const dx = moveEvent.clientX - centerX;
-            const dy = moveEvent.clientY - centerY;
-            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-            const rotation = angle;
-
-            element.dataset.rotation = rotation;
-            element.style.transform = `rotate(${rotation}deg)`;
-        };
-
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-        };
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    });
-}
-
-function removeRotationHandle(element) {
-    const existing = element.querySelector('.rotation-handle');
-    if (existing) existing.remove();
-}
-
+        
+        
 
         document.getElementById('addAudio').addEventListener('click', () => presentation.addAudioElement());
         document.getElementById('newSlide').addEventListener('click', () => this.createNewSlide());
@@ -524,43 +256,32 @@ function removeRotationHandle(element) {
         });
         
 
-// ✅ Hide right-click menu if user clicks outside it
-document.addEventListener('click', (e) => {
-    const menu = document.getElementById('customContextMenu');
-    if (menu && !menu.contains(e.target)) {
-      menu.style.display = 'none';
-    }
-  });
-  
-  // ✅ Hide when typing
-  document.addEventListener('keydown', () => {
-    const menu = document.getElementById('customContextMenu');
-    if (menu) menu.style.display = 'none';
-  });
-  
-  // ✅ Hide when editing text (input/typing)
-  document.addEventListener('input', () => {
-    const menu = document.getElementById('customContextMenu');
-    if (menu) menu.style.display = 'none';
-  });
-  
 
-   // ✅ Keyboard shortcuts for Ctrl+Z (undo) and Ctrl+Y (redo)
-document.addEventListener('keydown', (e) => {
-    // Don't handle shortcuts if user is editing text
-    if (e.target.contentEditable === 'true') return;
-
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        this.undo();
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        this.redo();
-    }
-});
-
-      
+        // const shapesTrigger = document.getElementById('shapesTrigger');
+        // const shapesSubmenu = document.getElementById('shapesSubmenu');
+        
+        // // Toggle shapes dropdown ON CLICK
+        // shapesTrigger.addEventListener('click', (e) => {
+        //     e.stopPropagation();
+        //     const isVisible = shapesSubmenu.style.display === 'block';
+        //     document.querySelectorAll('.dropdown-content').forEach(menu => {
+        //         if (menu !== shapesSubmenu) menu.style.display = 'none';
+        //     });
+        //     shapesSubmenu.style.display = isVisible ? 'none' : 'block';
+        // });
+        
+        // Keep it open after clicking a shape
+        // shapesSubmenu.addEventListener('click', (e) => {
+        //     e.stopPropagation(); // allow shape clicks without closing the dropdown
+        // });
+        
+        // Prevent duplicate listeners
+        // const shapeButtons = document.querySelectorAll('#shapesSubmenu [data-shape]');
+        // shapeButtons.forEach(button => {
+        //     button.replaceWith(button.cloneNode(true)); // Clear old listeners
+        // });
+        
+          
         
         // Hide dropdown if clicking outside
        document.addEventListener('click', () => {
@@ -592,6 +313,36 @@ document.addEventListener('keydown', (e) => {
 
 
 
+
+// Click anywhere to deselect
+// document.body.addEventListener('click', () => {
+//     document.querySelectorAll('.slide-element').forEach(el => el.classList.remove('selected'));
+// });
+
+// DUPLICATE BUTTON
+// document.getElementById('duplicate').addEventListener('click', () => {
+//     const selected = document.querySelector('.slide-element.selected');
+//     if (!selected) return;
+
+//     const elementId = parseInt(selected.dataset.elementId);
+//     const original = presentation.slides[presentation.currentSlideIndex].elements.find(el => el.id === elementId);
+//     if (!original) return;
+
+//     // Clone and update properties
+//     const clone = structuredClone(original);
+//     clone.id = Date.now() + Math.floor(Math.random() * 1000); // Unique ID
+//     clone.x += 20;
+//     clone.y += 20;
+
+//     // Ensure flip property exists
+//     if (!clone.flip) {
+//         clone.flip = { horizontal: false, vertical: false };
+//     }
+
+//     presentation.slides[presentation.currentSlideIndex].elements.push(clone);
+//     presentation.updateUI();
+// });
+// DUPLICATE BUTTON
 document.getElementById('duplicate').addEventListener('click', () => {
   const selected = document.querySelector('.slide-element.selected');
   if (!selected) return;
@@ -608,6 +359,7 @@ document.getElementById('duplicate').addEventListener('click', () => {
     alert('Duplicated elements cannot be duplicated again.');
     return;
   }
+
   // Count all clones of this original element (including itself)
   const originalId = original.id;
   const clones = slideElements.filter(el => el.originalId === originalId || el.id === originalId);
@@ -1019,16 +771,11 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         this.redo();
     }
-
-// ... inside initKeyboardShortcuts ...
-          if (e.key === 'Delete' || e.key === 'Backspace') {
-            // Only handle delete if not editing text
-            // if (e.target.contentEditable !== 'true') {
-                e.preventDefault();
-                this.deleteElement();
-            }
-        
-
+     if ((e.key === 'Delete' || e.key === 'Delete')) {
+        e.preventDefault();
+        this.deleteElement();
+    }
+    
 
     // ... other shortcuts ...
 });
@@ -1176,62 +923,12 @@ document.addEventListener('keydown', (e) => {
                 textColor: themes[this.currentTheme].textColor
             } : null
         };
-    
+        
         this.slides.push(slide);
         this.currentSlideIndex = this.slides.length - 1;
-    
-        // ✅ Add title placeholder
-        const titleElement = {
-            type: 'text',
-            content: 'Click to add title',
-            x: 200,
-            y: 100,
-            style: {
-                fontSize: '32px',
-                fontFamily: 'Arial',
-                color: '#444',
-                fontWeight: 'bold',
-                fontStyle: 'normal',
-                textAlign: 'center',
-                width: '560px',
-                height: '190px',
-                opacity: '0.85'
-               
-            },
-            id: Date.now(),
-            rotation: 0,
-            flip: { horizontal: false, vertical: false }
-        };
-    
-        // ✅ Add subtitle placeholder
-        const subtitleElement = {
-            type: 'text',
-            content: 'Click to add subtitle',
-            x: 220,
-            y: 200,
-            style: {
-                fontSize: '24px',
-                fontFamily: 'Arial',
-                color: '#666',
-                fontWeight: 'normal',
-                fontStyle: 'italic',
-                textAlign: 'center',
-                width: '560px',
-                height: '180px',
-                top: '300px',
-                opacity: '0.75'
-            },
-            id: Date.now() + 1,
-            rotation: 0,
-            flip: { horizontal: false, vertical: false }
-        };
-    
-        slide.elements.push(titleElement, subtitleElement);
         this.updateUI();
     }
-    
 
- 
     deleteCurrentSlide() {
         if (this.slides.length <= 1) return;
         this.slides.splice(this.currentSlideIndex, 1);
@@ -1249,7 +946,34 @@ document.addEventListener('keydown', (e) => {
         this.updateUI();
     }
 
-//    creating new slide along with the texts
+    // deleteElement(element) {
+    //     const selectedElementDiv = document.querySelector('.slide-element.selected'); 
+    
+    //     if (!selectedElementDiv) {
+    //         alert('Please select an element to delete.');
+    //         return;
+    //     }
+    
+    //     this.saveState();
+    
+    //     // Find the element ID from the dataset
+    //     const elementId = parseInt(selectedElementDiv.dataset.elementId);
+    
+    //     // Remove the element from the slides array
+    //     this.slides[this.currentSlideIndex].elements = this.slides[this.currentSlideIndex].elements.filter(
+    //         (el) => el.id !== elementId
+    //     );
+    
+    //     // Remove from the DOM
+    //     selectedElementDiv.remove();
+    
+    //     // Clear selection
+    //     this.selectedElement = null;
+    
+    //     this.updateUI();
+    // }
+    
+
     createNewPresentation() {
         if (confirm("Are you sure you want to create a new presentation? All unsaved changes will be lost.")) {
             // Reset the presentation to its initial state
@@ -1257,7 +981,7 @@ document.addEventListener('keydown', (e) => {
             this.currentSlideIndex = 0;
             this.undoStack = [];
             this.redoStack = [];
-     this.currentTheme = null;
+    
             // Create an initial slide
             this.createNewSlide();
             alert("New presentation created!");
@@ -1500,34 +1224,157 @@ applyFillToShape() {
         this.slides[this.currentSlideIndex].elements.push(element);
         this.updateUI();
     }
+//    addTextElement(content = 'Click to add text', x = 100, y = 100) {
+//         this.saveState(); // Save state before adding
+//         const element = {
+//             type: 'text',
+//             content: content,
+//             x: x,
+//             y: y,
+//             style: {
+//                 fontSize: '16px',
+//                 fontFamily: 'Arial',
+//                 color: '#000000',
+//                 fontWeight: 'normal',
+//                 fontStyle: 'normal'
+//             },
+//             id: Date.now()
+//         };
 
-// adding text or text elements
-addTextElement(content = 'Click to add text', x = 100, y = 100) {
-    console.log('Adding text element:', content, x, y);
-    this.saveState();
+//         this.slides[this.currentSlideIndex].elements.push(element);
+//         this.updateUI();
+//     }
+// addTextElement(content = 'Click to add text', x = 100, y = 100) {
+//     this.saveState(); // Save state before adding
 
-    const element = {
-        type: 'text',
-        content: content,
-        x: x,
-        y: y,
-        style: {
-            fontSize: '16px',
-            fontFamily: 'Arial',
-            color: '#000000',
-            fontWeight: 'normal',
-            fontStyle: 'normal'
-        },
-        id: Date.now()
-    };
- // ✅ Check for overflow
- this.checkAndMoveOverflowingElements();
-    this.slides[this.currentSlideIndex].elements.push(element);
-    this.updateUI();
-}
+//     const id = Date.now();
+//     const element = {
+//         type: 'text',
+//         content: '', // Start as empty to allow placeholder logic
+//         x: x,
+//         y: y,
+//         style: {
+//             fontSize: '16px',
+//             fontFamily: 'Arial',
+//             color: '#000000',
+//             fontWeight: 'normal',
+//             fontStyle: 'normal'
+//         },
+//         id: id,
+//         placeholder: content, // store placeholder text
+//         isEditing: false
+//     };
 
-   
+//     this.slides[this.currentSlideIndex].elements.push(element);
+//     this.updateUI();
 
+//     // After adding, attach placeholder and editing logic to the DOM element
+//     setTimeout(() => {
+//         const textEl = document.getElementById(`text-${id}`);
+//         if (textEl) {
+//             textEl.innerHTML = `<span class="placeholder">${content}</span>`;
+//             textEl.addEventListener('click', () => {
+//                 if (!element.isEditing) {
+//                     textEl.innerHTML = ''; // Remove placeholder on first click
+//                     element.isEditing = true;
+
+//                     const input = document.createElement('div');
+//                     input.contentEditable = true;
+//                     input.className = 'text-input';
+//                     input.innerText = '';
+//                     input.style.outline = 'none';
+
+//                     // On blur, check content
+//                     input.addEventListener('blur', () => {
+//                         element.content = input.innerText.trim();
+//                         element.isEditing = false;
+//                         if (element.content === '') {
+//                             textEl.innerHTML = `<span class="placeholder">${content}</span>`;
+//                         } else {
+//                             textEl.innerHTML = element.content;
+//                         }
+//                         this.saveState(); // Save after editing
+//                     });
+
+//                     textEl.appendChild(input);
+//                     input.focus();
+//                 }
+//             });
+//         }
+//     }, 0);
+// }
+
+
+
+
+
+
+
+
+    // addTextElement(content = 'Double click to edit', x = 100, y = 100) {
+    //     this.saveState(); // Save state before adding
+    //     const element = {
+    //         type: 'text',
+    //         content: content,
+    //         x: x,
+    //         y: y,
+    //         style: {
+    //             fontSize: '16px',
+    //             fontFamily: 'Arial',
+    //             color: '#000000',
+    //             fontWeight: 'normal',
+    //             fontStyle: 'normal'
+    //         },
+    //         id: Date.now()
+    //     };
+
+    //     this.slides[this.currentSlideIndex].elements.push(element);
+    //     this.updateUI();
+    // }
+
+    //  addTextElement(content = 'Click to add text', x = 100, y = 100) {
+    //     this.saveState(); // Save state before adding
+    //     const element = {
+    //         type: 'text',
+    //         content: content,
+    //         x: x,
+    //         y: y,
+    //         style: {
+    //             fontSize: '16px',
+    //             fontFamily: 'Arial',
+    //             color: '#000000',
+    //             fontWeight: 'normal',
+    //             fontStyle: 'normal'
+    //         },
+    //         id: Date.now()
+    //     };
+
+    //     this.slides[this.currentSlideIndex].elements.push(element);
+    //     this.updateUI();
+    // }
+    addTextElement(content = 'Click to add text', x = 100, y = 100) {
+        console.log('Adding text element:', content, x, y);
+        this.saveState(); // Save state before adding
+        const element = {
+            type: 'text',
+            content: content,
+            x: x,
+            y: y,
+            style: {
+                fontSize: '16px',
+                fontFamily: 'Arial',
+                color: '#000000',
+                fontWeight: 'normal',
+                fontStyle: 'normal'
+            },
+            id: Date.now()
+        };
+
+        console.log('Created element:', element);
+        this.slides[this.currentSlideIndex].elements.push(element);
+        console.log('Current slide elements:', this.slides[this.currentSlideIndex].elements);
+        this.updateUI();
+    }
 
     addImageElement() {
         const input = document.createElement('input');
@@ -1619,6 +1466,8 @@ addTextElement(content = 'Click to add text', x = 100, y = 100) {
           this.updateCurrentSlide();
     }
  
+    
+    
 
 
 flipElement(direction) {
@@ -1670,85 +1519,58 @@ flipElement(direction) {
 //     console.log(presentation.slides[presentation.currentSlideIndex].elements);
 
 // }
+    rotateSelectedElement(elementDiv, elementModel) {
+    // Remove existing rotation handle
+    const existing = elementDiv.querySelector('.rotation-handle');
+    if (existing) existing.remove();
 
-rotateSelectedElement() {
-    const selected = document.querySelector('.slide-element.selected');
-    if (!selected) return;
+    // Create new rotation handle
+    const handle = document.createElement('div');
+    handle.className = 'rotation-handle';
+    elementDiv.appendChild(handle);
 
-    const elementId = parseInt(selected.dataset.id || selected.dataset.elementId);
-    const element = this.slides[this.currentSlideIndex].elements.find(el => el.id === elementId);
-    if (!element) return;
+    let isRotating = false;
 
-    // Rotate 3 degrees per click
-    element.rotation = (element.rotation || 0) + 3;
-    if (element.rotation >= 360) element.rotation -= 360;
+    handle.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        isRotating = true;
 
-    const flip = element.flip || { horizontal: false, vertical: false };
-    const scaleX = flip.horizontal ? -1 : 1;
-    const scaleY = flip.vertical ? -1 : 1;
+        const rect = elementDiv.getBoundingClientRect();
+        elementDiv.dataset.centerX = rect.left + rect.width / 2;
+        elementDiv.dataset.centerY = rect.top + rect.height / 2;
+        document.body.style.cursor = 'grabbing';
+    });
 
-    selected.style.transform = `scale(${scaleX}, ${scaleY}) rotate(${element.rotation}deg)`;
+    const onMouseMove = (e) => {
+        if (!isRotating) return;
 
-    // ✅ Add or update the rotation handle
-    this.makeElementRotatable(selected);
+        const cx = parseFloat(elementDiv.dataset.centerX);
+        const cy = parseFloat(elementDiv.dataset.centerY);
+        const dx = e.clientX - cx;
+        const dy = e.clientY - cy;
 
-    saveState();
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        elementModel.rotation = angle;
+
+        const scaleX = elementModel.flip?.horizontal ? -1 : 1;
+        const scaleY = elementModel.flip?.vertical ? -1 : 1;
+
+        elementDiv.style.transform = `scale(${scaleX}, ${scaleY}) rotate(${angle}deg)`;
+    };
+
+    const onMouseUp = () => {
+        if (isRotating) {
+            isRotating = false;
+            document.body.style.cursor = 'default';
+            if (typeof presentation.saveState === 'function') {
+                presentation.saveState();
+            }
+        }
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
 }
-
-
-
-//     rotateSelectedElement(elementDiv, elementModel) {
-//     // Remove existing rotation handle
-//     const existing = elementDiv.querySelector('.rotation-handle');
-//     if (existing) existing.remove();
-
-//     // Create new rotation handle
-//     const handle = document.createElement('div');
-//     handle.className = 'rotation-handle';
-//     elementDiv.appendChild(handle);
-
-//     let isRotating = false;
-
-//     handle.addEventListener('mousedown', (e) => {
-//         e.stopPropagation();
-//         isRotating = true;
-
-//         const rect = elementDiv.getBoundingClientRect();
-//         elementDiv.dataset.centerX = rect.left + rect.width / 2;
-//         elementDiv.dataset.centerY = rect.top + rect.height / 2;
-//         document.body.style.cursor = 'grabbing';
-//     });
-
-//     const onMouseMove = (e) => {
-//         if (!isRotating) return;
-
-//         const cx = parseFloat(elementDiv.dataset.centerX);
-//         const cy = parseFloat(elementDiv.dataset.centerY);
-//         const dx = e.clientX - cx;
-//         const dy = e.clientY - cy;
-
-//         const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-//         elementModel.rotation = angle;
-
-//         const scaleX = elementModel.flip?.horizontal ? -1 : 1;
-//         const scaleY = elementModel.flip?.vertical ? -1 : 1;
-
-//         elementDiv.style.transform = `scale(${scaleX}, ${scaleY}) rotate(${angle}deg)`;
-//     };
-
-//     const onMouseUp = () => {
-//         if (isRotating) {
-//             isRotating = false;
-//             document.body.style.cursor = 'default';
-//             if (typeof presentation.saveState === 'function') {
-//                 presentation.saveState();
-//             }
-//         }
-//     };
-
-//     document.addEventListener('mousemove', onMouseMove);
-//     document.addEventListener('mouseup', onMouseUp);
-// }
 
     
     
@@ -2494,7 +2316,52 @@ loadPage() {
     }
     
         
-    
+                            // Handle link clicks
+                        const handleClick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            if (element.link.type === 'url') {
+                                window.open(element.link.url, '_blank');
+                            } else if (element.link.type === 'slide') {
+                                this.currentSlideIndex = parseInt(element.link.targetSlide);
+                                this.updateUI();
+                            }
+                        };
+
+                        // Make element draggable, resizable, and rotatable
+                        this.makeElementDraggable(elementDiv);
+                        this.makeElementResizable(elementDiv);
+                        this.makeElementRotatable(
+                            elementDiv,
+                            this.findElementModelFromDOM.bind(this),
+                            this.saveState.bind(this)
+                        );
+                        // Remove any existing click listeners
+                        elementDiv.removeEventListener('click', handleClick);
+                        // Add the new click listener
+                        elementDiv.addEventListener('click', handleClick);
+
+                        // Prevent selection when clicking on linked elements
+                        elementDiv.addEventListener('mousedown', (e) => {
+                            if (element.link) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                        });
+                    } else {
+                        // Only add selection click handler if element is not a link
+                        elementDiv.addEventListener('click', (e) => {
+                            if (!window.getSelection().toString()) {
+                              elementDiv.focus(); // Only focus if no text is selected
+                            }
+                          });
+                    }
+
+                    this.makeElementDraggable(elementDiv);
+                    this.makeElementResizable(elementDiv);
+                    this.currentSlideElement.appendChild(elementDiv);
+                    break;
     
 
     updateCurrentSlide() {
@@ -2643,190 +2510,154 @@ if (slide.showGuides) {
 
                             this.makeElementDraggable(elementDiv);
                             this.makeElementResizable(elementDiv);
-                            this.makeElementRotatable(elementDiv);
                     break;
-                   case 'text':
+                    case 'text':
                         elementDiv = document.createElement('div');
                         elementDiv.className = 'slide-element text-element';
                         elementDiv.dataset.elementId = element.id;
-                    
+                        
+                        // Create inner container for text content
                         const textContainer = document.createElement('div');
                         textContainer.className = 'text-content';
-                        textContainer.contentEditable = false;
-                    
-                        const isTitle = element.content === 'Click to add title';
-                        const isSubtitle = element.content === 'Click to add subtitle';
-                        const isPlaceholder = !element.content || isTitle || isSubtitle || element.content === 'Click to add text';
-                    
-                        // Show placeholder span
-                        if (isPlaceholder) {
-                            textContainer.innerHTML = `<span class="placeholder">${element.content}</span>`;
-                        } else {
-                            textContainer.innerHTML = element.content;
-                        }
-                    
+                        textContainer.contentEditable = true;
+                        textContainer.innerHTML = element.content || 'Double click to edit';
                         elementDiv.appendChild(textContainer);
-                    
+
+                        // Apply styles to the container
                         if (element.style) {
                             Object.assign(textContainer.style, element.style);
-                            if (element.style.width) elementDiv.style.width = element.style.width;
-                            if (element.style.height) elementDiv.style.height = element.style.height;
                         }
-                    
+
                         elementDiv.style.position = 'absolute';
                         elementDiv.style.left = `${element.x}px`;
                         elementDiv.style.top = `${element.y}px`;
-                        elementDiv.style.userSelect = 'none';
+                        elementDiv.style.userSelect = 'none'; // Prevent selection of outer div
                         elementDiv.style.cursor = 'move';
-                    
-                        Object.assign(textContainer.style, {
-                            whiteSpace: 'pre-wrap',
-wordBreak: 'break-word',
-overflowWrap: 'break-word',
-overflow: 'hidden',
-textOverflow: 'ellipsis',
-display: 'block',
-resize: 'none',
-boxSizing: 'border-box',
-width: '100%',
-minHeight: '50px'
-
-                        });
-                    
-// ✅ Resize box & shrink font if needed
-textContainer.addEventListener('input', () => {
-    const lineHeight = parseInt(getComputedStyle(textContainer).lineHeight || "24");
-    const maxHeight = 400; // max height before shrinking text
-    const minFontSize = 10;
-
-    // Expand the parent box
-    const contentHeight = textContainer.scrollHeight;
-    elementDiv.style.height = `${contentHeight}px`;
-
-    // Shrink font size if height exceeds max
-    const currentFontSize = parseFloat(getComputedStyle(textContainer).fontSize);
-    if (contentHeight > maxHeight && currentFontSize > minFontSize) {
-        const newFontSize = Math.max(minFontSize, currentFontSize - 1);
-        textContainer.style.fontSize = `${newFontSize}px`;
-    }
-
-    // Save updated height and font size to element model
-    element.style.fontSize = textContainer.style.fontSize;
-    element.style.height = `${elementDiv.offsetHeight}px`;
-});
-
-
-                        // ✅ PowerPoint-like click-to-edit
-                        textContainer.addEventListener('click', (e) => {
+                        textContainer.style.userSelect = 'text'; // Allow text selection in inner div
+                        textContainer.style.cursor = 'text';
+                        textContainer.style.whiteSpace = 'pre-wrap';     // Allows wrapping
+                        textContainer.style.wordBreak = 'break-word';    // Breaks long words
+                        textContainer.style.overflow = 'hidden';         // Prevents scrollbars
+                        textContainer.style.textOverflow = 'ellipsis';   // Adds "..." if overflowed
+                        textContainer.style.display = 'block';
+                        textContainer.style.width = '100%';
+                        textContainer.style.height = '100%';
+                        textContainer.style.boxSizing = 'border-box';    // Ensures padding doesn't cause overflow
+                        
+                        // Handle text selection and cursor placement
+                        textContainer.addEventListener('mousedown', (e) => {
                             e.stopPropagation();
-                    // ✅ Hide right-click menu
-    const menu = document.getElementById('customContextMenu');
-    if (menu) menu.style.display = 'none';
-
-    // ✅ Close any other open editable boxes
-    // document.querySelectorAll('.text-content[contenteditable="true"]').forEach(el => {
-    //     el.blur();
-    // });
-                            // Close others
-                            document.querySelectorAll('.text-content[contenteditable="true"]').forEach(el => {
-                                el.blur();
-                            });
-                    
-                            textContainer.contentEditable = true;
-                    
-                            if (textContainer.querySelector('.placeholder')) {
-                                textContainer.innerHTML = '';
-                            }
-                    
+                            elementDiv.classList.add('selected');
+                            
+                            // Ensure the text container gets focus
                             textContainer.focus();
-                        });
-                    // 🪄 Ensure text box grows to fit content
-setTimeout(() => {
-    const contentHeight = textContainer.scrollHeight;
-
-    // Auto-grow the outer container to fit full text
-    elementDiv.style.height = `${contentHeight}px`;
-
-    // Shrink font size if text still overflows
-    const maxHeight = 400;
-    const minFontSize = 10;
-    const currentFontSize = parseFloat(getComputedStyle(textContainer).fontSize);
-
-    if (contentHeight > maxHeight && currentFontSize > minFontSize) {
-        const newFontSize = Math.max(minFontSize, currentFontSize - 1);
-        textContainer.style.fontSize = `${newFontSize}px`;
-        element.style.fontSize = `${newFontSize}px`;
-    }
-
-    // Save back height for persistence
-    element.style.height = `${elementDiv.offsetHeight}px`;
-}, 0); 
-
-                        // ✅ Handle blur
-                        textContainer.addEventListener('blur', () => {
-                            textContainer.contentEditable = false;
-                            const value = textContainer.innerText.trim();
-                    
-                            if (!value) {
-                                let placeholder = 'Click to add text';
-                                if (isTitle) placeholder = 'Click to add title';
-                                if (isSubtitle) placeholder = 'Click to add subtitle';
-                                textContainer.innerHTML = `<span class="placeholder">${placeholder}</span>`;
-                                element.content = placeholder;
-                            } else {
-                                element.content = value;
-                                textContainer.innerHTML = value;
+                            
+                            // Place cursor at click position
+                            const range = document.createRange();
+                            const sel = window.getSelection();
+                            
+                            // Get click coordinates relative to the text container
+                            const rect = textContainer.getBoundingClientRect();
+                            const x = e.clientX - rect.left;
+                            const y = e.clientY - rect.top;
+                            
+                            // Find the closest text node and offset
+                            let closestNode = null;
+                            let closestOffset = 0;
+                            let minDistance = Infinity;
+                            
+                            const walk = document.createTreeWalker(textContainer, NodeFilter.SHOW_TEXT);
+                            let node;
+                            while (node = walk.nextNode()) {
+                                const nodeRect = node.getBoundingClientRect();
+                                const nodeX = nodeRect.left - rect.left;
+                                const nodeY = nodeRect.top - rect.top;
+                                const distance = Math.sqrt(Math.pow(x - nodeX, 2) + Math.pow(y - nodeY, 2));
+                                
+                                if (distance < minDistance) {
+                                    minDistance = distance;
+                                    closestNode = node;
+                                    closestOffset = Math.min(
+                                        Math.round((x - nodeX) / (nodeRect.width / node.length)),
+                                        node.length
+                                    );
+                                }
                             }
-                    
-                            // Save updated styles
+                            
+                            if (closestNode) {
+                                range.setStart(closestNode, closestOffset);
+                                range.collapse(true);
+                                sel.removeAllRanges();
+                                sel.addRange(range);
+                            }
+                        });
+                        
+                        // Handle keyboard events
+                        textContainer.addEventListener('keydown', (e) => {
+                            // Allow backspace and delete to work normally when editing text
+                            if (e.key === 'Backspace' || e.key === 'Delete') {
+                                // Only prevent default if there's no text selected and we're at the start of the text
+                                if (!window.getSelection().toString() && 
+                                    e.key === 'Backspace' && 
+                                    textContainer.textContent.length > 0 && 
+                                    window.getSelection().anchorOffset === 0) {
+                                    e.stopPropagation(); // Prevent the element from being deleted
+                                }
+                                return;
+                            }
+
+                            // Handle other keyboard shortcuts
+                            if (e.ctrlKey || e.metaKey) {
+                                switch(e.key.toLowerCase()) {
+                                    case 'b':
+                                        e.preventDefault();
+                                        document.execCommand('bold', false, null);
+                                        break;
+                                    case 'i':
+                                        e.preventDefault();
+                                        document.execCommand('italic', false, null);
+                                        break;
+                                    case 'u':
+                                        e.preventDefault();
+                                        document.execCommand('underline', false, null);
+                                        break;
+                                }
+                            }
+                        });
+                        
+                        // Save content on blur
+                        textContainer.addEventListener('blur', () => {
+                            element.content = textContainer.innerHTML;
                             element.style = {
                                 fontSize: textContainer.style.fontSize,
                                 fontFamily: textContainer.style.fontFamily,
                                 color: textContainer.style.color,
                                 fontWeight: textContainer.style.fontWeight,
-                                fontStyle: textContainer.style.fontStyle,
-                                textDecoration: textContainer.style.textDecoration,
-                                textAlign: textContainer.style.textAlign,
-                                lineHeight: textContainer.style.lineHeight,
-                                letterSpacing: textContainer.style.letterSpacing
+                                fontStyle: textContainer.style.fontStyle
                             };
-                    
-                            this.saveState();
-                            this.updateSlidesList?.(); // optional if needed
+                            this.updateSlidesList();
                         });
-                    
-                        textContainer.addEventListener('keydown', (e) => {
-                            const menu = document.getElementById('customContextMenu');
-    if (menu) menu.style.display = 'none';
-                            // Ctrl+Enter or Esc to finish editing
-                            if ((e.ctrlKey && e.key === 'Enter') || e.key === 'Escape') {
-                                e.preventDefault();
-                                textContainer.blur();
+
+                        // Handle drag start
+                        elementDiv.addEventListener('mousedown', (e) => {
+                            // Only start drag if clicking the outer div, not the text content
+                            if (e.target === elementDiv) {
+                                e.stopPropagation();
+                                const isMulti = e.ctrlKey || e.metaKey;
+
+                                if (!isMulti) {
+                                    document.querySelectorAll('.slide-element.selected').forEach(el => {
+                                        if (el !== elementDiv) el.classList.remove('selected');
+                                    });
+                                }
+                                elementDiv.classList.add('selected');
                             }
                         });
-                        
-                    
-                        // ✅ Selection + rotation
-                        elementDiv.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            document.querySelectorAll('.slide-element').forEach(el => el.classList.remove('selected'));
-                            elementDiv.classList.add('selected');
-                            this.makeElementRotatable(elementDiv);
-                        });
-                    
-                        // ✅ Drag, resize, rotate
-                        this.makeElementDraggable(elementDiv);
-                        this.makeElementResizable(elementDiv);
-                    
-                        if (elementDiv.classList.contains('selected')) {
-                            this.makeElementRotatable(elementDiv);
-                        }
-                    
-                        this.currentSlideElement.appendChild(elementDiv);
-                        break;
-                    
 
-                    case 'chart':
+                        break;
+
+
+                        case 'chart':
     const wrapper = document.createElement('div');
     wrapper.className = 'slide-element chart-element';
     wrapper.dataset.elementId = element.id;
@@ -2909,7 +2740,6 @@ setTimeout(() => {
     // Make draggable and resizable
     this.    makeElementDraggable(wrapper);
     this.makeElementResizable(wrapper);
-      this.makeElementRotatable(wrapper);
 
     // Update chart on resize and save state
     wrapper.addEventListener('mouseup', () => {
@@ -3159,7 +2989,6 @@ setTimeout(() => {
                         // Make wrapper draggable/resizable
                         this.makeElementDraggable(elementDiv);
                         this.makeElementResizable(elementDiv);
-                          this.makeElementRotatable(elementDiv);
                     
                         // Create video
                         const video = document.createElement('video');
@@ -3289,7 +3118,6 @@ setTimeout(() => {
                     elementDiv.addEventListener('mousedown', (e) => {
                         if (e.target.tagName !== 'TD' && e.target.tagName !== 'TH') {
                             this.makeElementDraggable(elementDiv);
-                              this.makeElementRotatable(elementDiv);
                         }
                     });
                     break;
@@ -3308,25 +3136,25 @@ setTimeout(() => {
 
 
 // bold, italics, font fam, px, color ------------------------------------------------------------------------------------------------------------------------------
-// elementDiv.addEventListener('click', (e) => {
-//     e.stopPropagation();
-//     document.querySelectorAll('.slide-element').forEach(el => el.classList.remove('selected'));
-//     elementDiv.classList.add('selected');
-//     this.selectedElementId = element.id;
-// });
-// elementDiv.addEventListener('click', () => {
-//     // Clear other selections
-//     document.querySelectorAll('.slide-element.selected').forEach(el => {
-//         el.classList.remove('selected');
-//         const rh = el.querySelector('.rotation-handle');
-//         if (rh) rh.remove();
-//     });
+elementDiv.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.slide-element').forEach(el => el.classList.remove('selected'));
+    elementDiv.classList.add('selected');
+    this.selectedElementId = element.id;
+});
+elementDiv.addEventListener('click', () => {
+    // Clear other selections
+    document.querySelectorAll('.slide-element.selected').forEach(el => {
+        el.classList.remove('selected');
+        const rh = el.querySelector('.rotation-handle');
+        if (rh) rh.remove();
+    });
 
-//     elementDiv.classList.add('selected');
+    elementDiv.classList.add('selected');
 
-//     const model = this.findElementModelFromDOM(elementDiv);
-//     rotateSelectedElement(elementDiv, model);
-// });
+    const model = this.findElementModelFromDOM(elementDiv);
+    rotateSelectedElement(elementDiv, model);
+});
 
 
 
@@ -3511,8 +3339,7 @@ this.selectedElement = this.selectedElements[this.selectedElements.length - 1] |
             }
             this.makeElementDraggable(elementDiv);
             this.makeElementResizable(elementDiv);
-                  this.makeElementRotatable(elementDiv);
-
+                
                 // Update element position when dragged
                 elementDiv.addEventListener('mouseup', () => {
                     element.x = parseInt(elementDiv.style.left);
@@ -3571,76 +3398,7 @@ makeElementDraggable(element) {
             document.addEventListener('mouseup', onMouseUp);
     }
     
-    makeElementRotatable(element) {
-    let isRotating = false;
-    let centerX, centerY, startAngle;
-    let rotationHandle;
-
-    // Create rotation handle
-    rotationHandle = document.createElement('div');
-    rotationHandle.classList.add('rotation-handle');
-    rotationHandle.style.width = '20px';
-    rotationHandle.style.height = '20px';
-    rotationHandle.style.background = 'orange';
-    rotationHandle.style.borderRadius = '50%';
-    rotationHandle.style.position = 'absolute';
-    rotationHandle.style.top = '-30px'; // place above element
-    rotationHandle.style.left = '50%';
-    rotationHandle.style.transform = 'translateX(-50%)';
-    rotationHandle.style.cursor = 'grab';
-    rotationHandle.style.display = 'none'; // initially hidden
-
-    element.appendChild(rotationHandle);
-
-    // Show handle on click
-    element.addEventListener('click', () => {
-        rotationHandle.style.display = 'block';
-    });
-
-    rotationHandle.addEventListener('mousedown', (e) => {
-        e.stopPropagation(); // prevent drag
-        isRotating = true;
-
-        const rect = element.getBoundingClientRect();
-        centerX = rect.left + rect.width / 2;
-        centerY = rect.top + rect.height / 2;
-
-        const dx = e.clientX - centerX;
-        const dy = e.clientY - centerY;
-        startAngle = Math.atan2(dy, dx) * (180 / Math.PI) - (parseFloat(element.getAttribute('data-rotation')) || 0);
-
-        rotationHandle.style.cursor = 'grabbing';
-    });
-
-    const onMouseMove = (e) => {
-        if (!isRotating) return;
-
-        const dx = e.clientX - centerX;
-        const dy = e.clientY - centerY;
-        const angle = Math.atan2(dy, dx) * (180 / Math.PI) - startAngle;
-
-        element.style.transform = `rotate(${angle}deg)`;
-        element.setAttribute('data-rotation', angle);
-
-        // Update element rotation in the model
-        const elementModel = this.findElementModelFromDOM(element);
-        if (elementModel) {
-            elementModel.rotation = angle;
-        }
-    };
-
-    const onMouseUp = () => {
-        if (isRotating) {
-            isRotating = false;
-            rotationHandle.style.cursor = 'grab';
-            this.saveState();
-        }
-    };
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-}
-
+    
     
     
     
@@ -4117,9 +3875,6 @@ makeElementDraggable(element) {
                     textContent.style.fontStyle = element.style.fontStyle;
                 }
                 break;
-
-
-
             case 'underline':
                 if (selectedText) {
                     document.execCommand('underline', false, null);
@@ -5454,7 +5209,6 @@ currentSlide.appendChild(wrapper);
 
 this.makeElementDraggable(wrapper);
 this.makeElementResizable(wrapper);
-  this.makeElementRotatable(wrapper);
 
         
         const onMouseMove = (e) => {
@@ -6966,18 +6720,7 @@ initContextMenu() {
     document.addEventListener('scroll', () => {
         contextMenu.style.display = 'none';
     });
-    // Hide context menu when typing (keyboard input)
-document.addEventListener('keydown', () => {
-    contextMenu.style.display = 'none';
-});
-
-// Hide context menu when user types in editable text
-document.addEventListener('input', () => {
-    contextMenu.style.display = 'none';
-});
-
 }
-
 
 // Remove the second initContextMenu function
 // ... existing code ...
@@ -7804,92 +7547,16 @@ initKeyboardShortcuts() {
                     e.preventDefault();
                     this.duplicateElement();
                     break;
-                      case 'z': // undo
-                      e.preventDefault();
-                      this.undo();
-                      break;
-                      case 's': //save
-                      e.preventDefault();
-                      this.savePresentation();
-                      break;
-                      case 'y': //redo
-                        e.preventDefault();
-                        this.redo();
-                        break;
-                           case 'a': // Select All
-                    e.preventDefault();
-                    this.selectAllElements(); // implement this function if needed
-                    break;
-            
-                                }
-// ... inside initKeyboardShortcuts ...
+            }
         } else if (e.key === 'Delete' || e.key === 'Backspace') {
             // Only handle delete if not editing text
-            if (e.target.contentEditable !== 'true') {
+            if (!e.target.contentEditable) {
                 e.preventDefault();
                 this.deleteElement();
-                //  this.deleteObject();
-    // this.deleteCurrentSlide();
             }
         }
-        
     });
-    
-    // Enable Ctrl+Click multiple selection on elements
-    document.addEventListener('click', (e) => {
-        const element = e.target.closest('.slide-element'); // adjust selector as needed
-        if (!element) return;
-
-        if (e.ctrlKey || e.metaKey) {
-            // Multi-select
-            if (this.selectedElements.includes(element)) {
-                element.classList.remove('selected');
-                this.selectedElements = this.selectedElements.filter(el => el !== element);
-            } else {
-                element.classList.add('selected');
-                this.selectedElements.push(element);
-            }
-        } else {
-            // Single select
-            this.selectedElements.forEach(el => el.classList.remove('selected'));
-            this.selectedElements = [element];
-            element.classList.add('selected');
-        }
-    });
-
-    // Clear selection when clicking outside any element
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.slide-element')) {
-            this.selectedElements.forEach(el => el.classList.remove('selected'));
-            this.selectedElements = [];
-        }
-    });
-
 }
-// Select all elements on the current slide
-selectAllElements() {
-    const currentSlide = document.getElementById('currentSlide');
-    if (!currentSlide) return;
-    
-    // Get all slide elements on the current slide
-    const allElements = currentSlide.querySelectorAll('.slide-element');
-    
-    if (allElements.length === 0) {
-        console.log('No elements to select');
-        return;
-    }
-    
-    // Select all elements
-    allElements.forEach(element => {
-        element.classList.add('selected');
-    });
-    
-    console.log(`Selected ${allElements.length} elements`);
-    
-    // Update the UI to reflect the selection
-    this.updateUI();
-}
-
 
     async savePresentation() {
         try {

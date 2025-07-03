@@ -12,7 +12,29 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 </head>
+<!-- Save Prompt -->
+<div id="savePromptModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <p>Do you want to save changes?</p>
+    <button id="saveBtn">Save</button>
+    <button id="dontSaveBtn">Don't Save</button>
+    <button id="cancelBtn">Cancel</button>
+  </div>
+</div>
+
+<!-- Format Selection Prompt -->
+<div id="formatPromptModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <p>Save as:</p>
+    <button id="savePdfBtn">PDF</button>
+    <button id="saveHtmlBtn">HTML</button>
+    <button id="formatCancelBtn">Cancel</button>
+  </div>
+</div>
+
+
 <body>
+    
     <nav class="navbar">
         <div class="na vbar-brand">
             <i class="fas fa-presentation"></i>
@@ -24,6 +46,7 @@
                 <div class="dropdown-content">
                     <button onclick="presentation.createNewPresentation()"><i class="fas fa-file"></i> New</button>
                     <button id="savePresentation"><i class="fas fa-save"></i> Save</button>
+                 <button id="saveAsBtn" onclick="manualSave()"><i class="fas fa-save"></i> Save As</button>
                     <button id="exportPDF"><i class="fas fa-file-pdf"></i> Export as PDF</button>
                     <input type="file" id="pptxInput" accept=".pptx" style="display:none;" onchange="handlePptxUpload(event)">
                     <button onclick="document.getElementById('pptxInput').click()"><i class="fas fa-file"></i>Open</button>
@@ -45,7 +68,7 @@
 
                     
         <button id="Delete">Delete 🗑️</button>
-        <button id="duplicate">Duplicate 🔂</button>
+        <button id="duplicate">Duplicate 🔂(5)</button>
         <button id="rotate">Rotate  🔄</button>
         <button id="cropImageBtn">Crop Image ✂️</button>
         <button id="applyCropBtn" style="display:none;">Apply Crop ✅</button>
@@ -375,9 +398,27 @@
             <button id="exitPresentation"><i class="fas fa-times"></i></button>
         </div>
     </div>
+<!-- <div class="slide-element" data-element-id="12345"></div> -->
 
-  
+  <div id="toast"
+     style="position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #333;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-family: sans-serif;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: 9999;">
+</div>
+
+
+<!-- <div id="messageBox" class="message" style="display:none;"></div> -->
+
     <script src="script.js"></script>
+    <script src="saveas.js"></script>
     <script src="Support.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
